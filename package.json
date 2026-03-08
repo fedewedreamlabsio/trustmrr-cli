@@ -1,10 +1,10 @@
 {
   "name": "trustmrr",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "CLI for the TrustMRR API",
   "type": "module",
   "bin": {
-    "trustmrr": "./dist/src/index.js"
+    "trustmrr": "dist/src/index.js"
   },
   "files": [
     "dist",
