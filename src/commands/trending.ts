@@ -1,7 +1,18 @@
 import { Command } from "commander";
 
 import { renderStartupListTable } from "../formatters.js";
-import { buildSharedQuery, outputJson, resolveListLimit, type CommandContext, type GlobalOptions } from "./shared.js";
+import {
+  applyGlobalFilters,
+  buildListResponse,
+  outputJson,
+  parseCountArgument,
+  sortByGrowth30dDesc,
+  resolveListLimit,
+  scanClientSideStartups,
+  type CommandContext,
+  type GlobalOptions,
+  writeTextOutput,
+} from "./shared.js";
 
 export function registerTrendingCommand(program: Command, context: CommandContext): void {
   program
@@ -9,23 +20,18 @@ export function registerTrendingCommand(program: Command, context: CommandContex
     .description("Fastest growing by MoM percentage")
     .action(async (count: string | undefined, _options: GlobalOptions, command: Command) => {
       const globals = command.optsWithGlobals<GlobalOptions>();
-      const limit = resolveListLimit(parseCount(count), globals.limit, 10);
-      const response = await context.client.listStartups({
-        ...buildSharedQuery(globals),
-        limit,
-        sort: "growth30d",
-        order: "desc",
-      });
+      const limit = resolveListLimit(parseCountArgument(count), globals.limit, 10);
+      const scan = await scanClientSideStartups(context.client, globals);
+      const startups = sortByGrowth30dDesc(
+        applyGlobalFilters(scan.data, globals).filter((startup) => startup.growth30d !== null),
+      );
+      const response = buildListResponse(startups, limit);
 
       if (globals.json) {
         outputJson(response, context.writeStdout);
         return;
       }
 
-      context.writeStdout(`${renderStartupListTable(response.data)}\n`);
+      writeTextOutput(renderStartupListTable(response.data), context.writeStdout, scan.note);
     });
-}
-
-function parseCount(value: string | undefined): number | undefined {
-  return value === undefined ? undefined : Number.parseInt(value, 10);
 }

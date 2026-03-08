@@ -178,9 +178,12 @@ export function renderComparisonTable(left: StartupDetail, right: StartupDetail)
   ]);
 }
 
-export function renderCountTable(counts: Array<{ name: string; count: number }>): string {
+export function renderCountTable(
+  counts: Array<{ name: string; count: number }>,
+  label = "Value",
+): string {
   return renderTable(counts, [
-    { header: "Value", value: (row) => row.name },
+    { header: label, value: (row) => row.name },
     { header: "Count", value: (row) => String(row.count), align: "right" },
   ]);
 }
@@ -198,7 +201,7 @@ export function countOccurrences(values: Array<string | null | undefined>) {
 
   return [...map.entries()]
     .map(([name, count]) => ({ name, count }))
-    .sort((left, right) => left.name.localeCompare(right.name));
+    .sort((left, right) => right.count - left.count || left.name.localeCompare(right.name));
 }
 
 function formatCount(value: number | null | undefined): string {

@@ -46,8 +46,9 @@ export interface StartupDetail extends StartupSummary {
 
 export interface ListMeta {
   total: number;
+  page: number;
   limit: number;
-  offset: number;
+  hasMore: boolean;
 }
 
 export interface StartupListResponse {
@@ -61,7 +62,7 @@ export interface StartupDetailResponse {
 
 export interface StartupQuery {
   limit?: number;
-  offset?: number;
+  page?: number;
   sort?: StartupSortField;
   order?: SortOrder;
   category?: string;

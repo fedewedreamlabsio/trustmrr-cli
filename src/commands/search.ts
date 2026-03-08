@@ -1,7 +1,17 @@
 import { Command } from "commander";
 
 import { renderStartupListTable } from "../formatters.js";
-import { buildSharedQuery, outputJson, type CommandContext, type GlobalOptions } from "./shared.js";
+import {
+  applyGlobalFilters,
+  buildListResponse,
+  filterBySearch,
+  outputJson,
+  scanClientSideStartups,
+  sortByRevenueDesc,
+  type CommandContext,
+  type GlobalOptions,
+  writeTextOutput,
+} from "./shared.js";
 
 export function registerSearchCommand(program: Command, context: CommandContext): void {
   program
@@ -9,19 +19,17 @@ export function registerSearchCommand(program: Command, context: CommandContext)
     .description("Search startups by name or description")
     .action(async (query: string, _options: GlobalOptions, command: Command) => {
       const globals = command.optsWithGlobals<GlobalOptions>();
-      const response = await context.client.listStartups({
-        ...buildSharedQuery(globals),
-        limit: globals.limit ?? 10,
-        search: query,
-        sort: "mrr",
-        order: "desc",
-      });
+      const scan = await scanClientSideStartups(context.client, globals);
+      const startups = sortByRevenueDesc(
+        filterBySearch(applyGlobalFilters(scan.data, globals), query),
+      );
+      const response = buildListResponse(startups, globals.limit ?? 10);
 
       if (globals.json) {
         outputJson(response, context.writeStdout);
         return;
       }
 
-      context.writeStdout(`${renderStartupListTable(response.data)}\n`);
+      writeTextOutput(renderStartupListTable(response.data), context.writeStdout, scan.note);
     });
 }

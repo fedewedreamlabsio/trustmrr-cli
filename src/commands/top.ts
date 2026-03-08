@@ -1,31 +1,49 @@
 import { Command } from "commander";
 
 import { renderStartupListTable } from "../formatters.js";
-import { buildSharedQuery, outputJson, resolveListLimit, type CommandContext, type GlobalOptions } from "./shared.js";
+import {
+  applyGlobalFilters,
+  buildListResponse,
+  hasClientSideGlobalFilters,
+  outputJson,
+  parseCountArgument,
+  resolveListLimit,
+  scanClientSideStartups,
+  sortByRevenueDesc,
+  type CommandContext,
+  type GlobalOptions,
+  writeTextOutput,
+} from "./shared.js";
 
 export function registerTopCommand(program: Command, context: CommandContext): void {
   program
     .command("top [count]")
     .description("Leaderboard by MRR")
-    .action(async (count: string | undefined, options: GlobalOptions, command: Command) => {
+    .action(async (count: string | undefined, _options: GlobalOptions, command: Command) => {
       const globals = command.optsWithGlobals<GlobalOptions>();
-      const limit = resolveListLimit(parseCount(count), globals.limit, 10);
-      const response = await context.client.listStartups({
-        ...buildSharedQuery(globals),
-        limit,
-        sort: "mrr",
-        order: "desc",
-      });
+      const limit = resolveListLimit(parseCountArgument(count), globals.limit, 10);
+      let note: string | null = null;
+      const response = hasClientSideGlobalFilters(globals)
+        ? await (async () => {
+            const scan = await scanClientSideStartups(context.client, globals);
+            note = scan.note;
+
+            return buildListResponse(
+              sortByRevenueDesc(applyGlobalFilters(scan.data, globals)),
+              limit,
+            );
+          })()
+        : await context.client.listStartups({
+            limit,
+            sort: "mrr",
+            order: "desc",
+          });
 
       if (globals.json) {
         outputJson(response, context.writeStdout);
         return;
       }
 
-      context.writeStdout(`${renderStartupListTable(response.data)}\n`);
+      writeTextOutput(renderStartupListTable(response.data), context.writeStdout, note);
     });
-}
-
-function parseCount(value: string | undefined): number | undefined {
-  return value === undefined ? undefined : Number.parseInt(value, 10);
 }

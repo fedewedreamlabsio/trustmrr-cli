@@ -40,8 +40,9 @@ export function makeListResponse(...items: StartupDetail[]): StartupListResponse
     data: items,
     meta: {
       total: items.length,
+      page: 1,
       limit: items.length,
-      offset: 0,
+      hasMore: false,
     },
   };
 }

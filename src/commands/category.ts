@@ -1,7 +1,19 @@
 import { Command } from "commander";
 
 import { renderStartupListTable } from "../formatters.js";
-import { buildSharedQuery, outputJson, resolveListLimit, type CommandContext, type GlobalOptions } from "./shared.js";
+import {
+  applyGlobalFilters,
+  buildListResponse,
+  filterByCategory,
+  outputJson,
+  parseCountArgument,
+  resolveListLimit,
+  scanClientSideStartups,
+  sortByRevenueDesc,
+  type CommandContext,
+  type GlobalOptions,
+  writeTextOutput,
+} from "./shared.js";
 
 export function registerCategoryCommand(program: Command, context: CommandContext): void {
   program
@@ -15,25 +27,19 @@ export function registerCategoryCommand(program: Command, context: CommandContex
         command: Command,
       ) => {
         const globals = command.optsWithGlobals<GlobalOptions>();
-        const limit = resolveListLimit(parseCount(count), globals.limit, 10);
-        const response = await context.client.listStartups({
-          ...buildSharedQuery(globals),
-          category: name,
-          limit,
-          sort: "mrr",
-          order: "desc",
-        });
+        const limit = resolveListLimit(parseCountArgument(count), globals.limit, 10);
+        const scan = await scanClientSideStartups(context.client, globals);
+        const startups = sortByRevenueDesc(
+          filterByCategory(applyGlobalFilters(scan.data, globals), name),
+        );
+        const response = buildListResponse(startups, limit);
 
         if (globals.json) {
           outputJson(response, context.writeStdout);
           return;
         }
 
-        context.writeStdout(`${renderStartupListTable(response.data)}\n`);
+        writeTextOutput(renderStartupListTable(response.data), context.writeStdout, scan.note);
       },
     );
-}
-
-function parseCount(value: string | undefined): number | undefined {
-  return value === undefined ? undefined : Number.parseInt(value, 10);
 }

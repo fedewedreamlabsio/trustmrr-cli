@@ -20,17 +20,23 @@ export interface BuildProgramOptions {
 }
 
 export function buildProgram(options: BuildProgramOptions = {}): Command {
-  const client = options.client ?? new TrustMrrClient();
   const stdout = options.stdout ?? process.stdout;
   const stderr = options.stderr ?? process.stderr;
+  const client =
+    options.client ?? new TrustMrrClient({ writeStderr: (value) => stderr.write(value) });
 
   const program = new Command();
   program
     .name("trustmrr")
     .description("CLI for TrustMRR startup revenue data")
     .option("--json", "Output JSON instead of formatted tables")
-    .option("--limit <n>", "Override default count", parseInteger)
-    .option("--country <cc>", "Filter by 2-letter country code")
+    .option("--limit <n>", "Override default count", parsePositiveInteger)
+    .option(
+      "--scan <n>",
+      "Scan the top N startups by revenue for client-side commands",
+      parsePositiveInteger,
+    )
+    .option("--country <cc>", "Filter by 2-letter country code", parseCountryCode)
     .option("--min-mrr <n>", "Minimum MRR filter", parseNumber)
     .option("--max-mrr <n>", "Maximum MRR filter", parseNumber)
     .showHelpAfterError("(run with --help for usage)")
@@ -87,9 +93,13 @@ export function handleError(error: unknown, stderr: NodeJS.WritableStream): void
   stderr.write("Unexpected error.\n");
 }
 
-function parseInteger(value: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed < 0) {
+function parsePositiveInteger(value: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`Invalid integer value: ${value}`);
+  }
+
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     throw new Error(`Invalid integer value: ${value}`);
   }
 
@@ -98,11 +108,20 @@ function parseInteger(value: string): number {
 
 function parseNumber(value: string): number {
   const parsed = Number(value);
-  if (Number.isNaN(parsed) || parsed < 0) {
+  if (!Number.isFinite(parsed) || parsed < 0) {
     throw new Error(`Invalid numeric value: ${value}`);
   }
 
   return parsed;
+}
+
+function parseCountryCode(value: string): string {
+  const normalized = value.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(normalized)) {
+    throw new Error(`Invalid country code: ${value}`);
+  }
+
+  return normalized;
 }
 
 import { realpathSync } from "node:fs";
