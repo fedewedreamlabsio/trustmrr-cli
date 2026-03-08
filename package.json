@@ -1,5 +1,5 @@
 {
-  "name": "trustmrr-cli",
+  "name": "trustmrr",
   "version": "1.0.0",
   "description": "CLI for the TrustMRR API",
   "type": "module",

@@ -7,7 +7,7 @@ TypeScript CLI for exploring the TrustMRR verified startup revenue database from
 ## Install
 
 ```bash
-npm install -g trustmrr-cli
+npm install -g trustmrr
 ```
 
 Node 18+ is required.
